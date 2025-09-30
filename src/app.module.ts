@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ServanteesModule } from './servantees/servantees.module';
 
 @Module({
-  imports: [ServanteesModule],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost:27017/outreach'),
+    ServanteesModule,
+  ],
 })
 export class AppModule {}
