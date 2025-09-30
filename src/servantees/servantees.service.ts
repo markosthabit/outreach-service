@@ -1,26 +1,35 @@
 import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Servantee, ServanteeDocument } from './schemas/servantee.schema';
 import { CreateServanteeDto } from './dto/create-servantee.dto';
 import { UpdateServanteeDto } from './dto/update-servantee.dto';
 
 @Injectable()
 export class ServanteesService {
-  create(createServanteeDto: CreateServanteeDto) {
-    return 'This action adds a new servantee';
+  constructor(
+    @InjectModel(Servantee.name) private servanteeModel: Model<ServanteeDocument>,
+  ) {}
+
+  create(createServanteeDto: CreateServanteeDto): Promise<Servantee> {
+    const newServantee = new this.servanteeModel(createServanteeDto);
+    return newServantee.save();
   }
 
-  findAll() {
-    return `This action returns all servantees`;
-  }
+findOne(id: string): Promise<ServanteeDocument | null> {
+  return this.servanteeModel.findById(id).exec();
+}
 
-  findOne(id: number) {
-    return `This action returns a #${id} servantee`;
-  }
+update(id: string, updateServanteeDto: UpdateServanteeDto): Promise<ServanteeDocument | null> {
+  return this.servanteeModel.findByIdAndUpdate(id, updateServanteeDto, { new: true }).exec();
+}
 
-  update(id: number, updateServanteeDto: UpdateServanteeDto) {
-    return `This action updates a #${id} servantee`;
-  }
+remove(id: string): Promise<ServanteeDocument | null> {
+  return this.servanteeModel.findByIdAndDelete(id).exec();
+}
 
-  remove(id: number) {
-    return `This action removes a #${id} servantee`;
-  }
+findAll(): Promise<ServanteeDocument[]> {
+  return this.servanteeModel.find().exec();
+}
+
 }
