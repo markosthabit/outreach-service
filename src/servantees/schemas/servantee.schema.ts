@@ -11,7 +11,7 @@ export class Servantee {
   @Prop({ required: true })
   name: string;
 
-  @Prop()
+  @Prop({type: Date})
   birthDate: Date;
 
   @Prop()
