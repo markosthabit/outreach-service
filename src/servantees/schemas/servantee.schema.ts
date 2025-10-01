@@ -1,34 +1,44 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Date, Document } from 'mongoose';
+import { Document } from 'mongoose';
+import { ApiProperty } from '@nestjs/swagger';
 
 export type ServanteeDocument = Servantee & Document;
 
 @Schema({ timestamps: true })
 export class Servantee {
-  @Prop({required: true, unique: true})
+  @ApiProperty()
+  @Prop({ required: true, unique: true })
   phone: string;
 
+  @ApiProperty()
   @Prop({ required: true })
   name: string;
 
-  @Prop({type: Date})
+  @ApiProperty({ type: String, format: 'date-time', required: false })
+  @Prop()
   birthDate: Date;
 
+  @ApiProperty({ required: false })
   @Prop()
   education: string;
 
+  @ApiProperty({ required: false })
   @Prop()
   work: string;
 
+  @ApiProperty({ required: false })
   @Prop()
   church: string;
 
-  @Prop()
-  retreatDates: [Date];
+  @ApiProperty({ type: [String], format: 'date-time', required: false })
+  @Prop({ type: [Date] })
+  retreatDates: Date[];
 
-  @Prop()
-  notes: [string];
+  @ApiProperty({ type: [String], required: false })
+  @Prop([String])
+  notes: string[];
 
+  @ApiProperty({ default: true })
   @Prop({ default: true })
   isActive: boolean;
 }

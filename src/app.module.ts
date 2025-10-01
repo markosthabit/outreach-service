@@ -6,7 +6,7 @@ import { ServanteesModule } from './servantees/servantees.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost:27017/outreach'),
+    MongooseModule.forRoot(process.env.MONGO_URI!),
     ServanteesModule,
   ],
 })
