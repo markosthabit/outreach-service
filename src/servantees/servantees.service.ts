@@ -12,9 +12,9 @@ export class ServanteesService {
   ) {}
 
   create(createServanteeDto: CreateServanteeDto): Promise<Servantee> {
-    const newServantee = new this.servanteeModel(createServanteeDto);
-    return newServantee.save();
-  }
+  return this.servanteeModel.create(createServanteeDto);
+}
+
 
 findOne(id: string): Promise<ServanteeDocument | null> {
   return this.servanteeModel.findById(id).exec();
