@@ -1,19 +1,61 @@
 // users/schemas/user.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { ApiProperty } from '@nestjs/swagger';
 
 export type UserDocument = User & Document;
 
+export enum UserRole {
+  ADMIN = 'Admin',
+  SERVANT = 'Servant',
+}
+
 @Schema({ timestamps: true })
 export class User {
-  @Prop({ required: true, unique: true })
+  // @ApiProperty({
+  //   example: 'John Doe',
+  //   description: 'Full name of the user'
+  // })
+  // @Prop({ 
+  //   required: [true, 'Name is required'],
+  //   trim: true,
+  //   minlength: [2, 'Name must be at least 2 characters long']
+  // })
+  // name: string;
+
+  @ApiProperty({
+    example: 'john@example.com',
+    description: 'Email address of the user'
+  })
+  @Prop({ 
+    required: [true, 'Email is required'],
+    unique: true, 
+    lowercase: true,
+    trim: true
+  })
   email: string;
 
-  @Prop({ required: true })
+  @Prop({ 
+    required: [true, 'Password is required'],
+    select: false,
+    minlength: [8, 'Password must be at least 8 characters long']
+  })
   password: string;
 
-  @Prop({ enum: ['Admin', 'Servant'], default: 'Servant' })
-  role: 'Admin' | 'Servant';
+  @ApiProperty({ 
+    enum: UserRole, 
+    default: UserRole.SERVANT,
+    description: 'User role (Admin or Servant)'
+  })
+  @Prop({ 
+    type: String, 
+    enum: {
+      values: [UserRole.ADMIN, UserRole.SERVANT],
+      message: 'Role must be either Admin or Servant'
+    },
+    default: UserRole.SERVANT
+  })
+  role: UserRole;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

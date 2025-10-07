@@ -17,31 +17,63 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    // ✅ Case 1: NestJS HttpExceptions (ConflictException, BadRequestException, etc.)
+    // ✅ Case 1: Known HttpExceptions
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const res = exception.getResponse();
 
-      // Special handling for validation errors
-      if (exception instanceof BadRequestException && Array.isArray((res as any)?.message)) {
+      const message =
+        typeof res === 'string'
+          ? res
+          : (res as any).message || 'Unexpected error';
+
+      // Handle validation array
+      if (
+        exception instanceof BadRequestException &&
+        Array.isArray((res as any)?.message)
+      ) {
         return response.status(status).json({
           statusCode: status,
-          timestamp: new Date().toISOString(),
-          path: request.url,
           error: 'Bad Request',
+          message: 'Validation failed',
           validationErrors: (res as any).message,
+          path: request.url,
+          timestamp: new Date().toISOString(),
         });
       }
 
       return response.status(status).json({
         statusCode: status,
-        timestamp: new Date().toISOString(),
+        error: (res as any)?.error || exception.name,
+        message,
         path: request.url,
-        ...(typeof res === 'object' ? res : { message: res }),
+        timestamp: new Date().toISOString(),
       });
     }
 
-    // ✅ Case 2: Mongoose duplicate key error (MongoServerError code 11000)
+    // ✅ Case 2: Mongoose ValidationError
+    if (
+      typeof exception === 'object' &&
+      exception !== null &&
+      'name' in exception &&
+      (exception as any).name === 'ValidationError'
+    ) {
+      const validationErrors: Record<string, string> = {};
+      for (const field in (exception as any).errors) {
+        validationErrors[field] = (exception as any).errors[field].message;
+      }
+
+      return response.status(HttpStatus.BAD_REQUEST).json({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: 'Bad Request',
+        message: 'Validation failed',
+        validationErrors,
+        path: request.url,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // ✅ Case 3: Mongo duplicate key error
     if (exception instanceof MongoServerError && exception.code === 11000) {
       const keyValue = exception.keyValue || {};
       const key = Object.keys(keyValue)
@@ -50,22 +82,26 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       return response.status(HttpStatus.CONFLICT).json({
         statusCode: HttpStatus.CONFLICT,
-        message: `${key} already exists`,
         error: 'Conflict',
-        timestamp: new Date().toISOString(),
+        message: `${key} already exists`,
         path: request.url,
+        timestamp: new Date().toISOString(),
       });
     }
 
-    // ✅ Case 3: Unexpected errors (fallback → 500)
+    // ✅ Case 4: Unknown errors (fallback)
     console.error('Unexpected exception:', exception);
-    
-    // In production, avoid sending the actual error details
+
     const isProd = process.env.NODE_ENV === 'production';
+    const message =
+      exception instanceof Error
+        ? exception.message
+        : 'Internal server error';
+
     return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: 'Internal server error',
-      error: isProd ? undefined : String(exception),
+      error: 'Internal Server Error',
+      message: isProd ? 'Internal server error' : message,
       timestamp: new Date().toISOString(),
       path: request.url,
     });

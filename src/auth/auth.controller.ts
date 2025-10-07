@@ -2,75 +2,85 @@ import {
   Controller,
   Post,
   Body,
-  UseFilters,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
+import { LoginDto } from './dto/login.dto';
+import { TokenResponseDto, RegisterResponseDto } from './dto/auth-response.dto';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
 
 @ApiTags('Authentication')
-@UseFilters(AllExceptionsFilter)
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+  
   constructor(private readonly authService: AuthService) {}
 
-  /**
-   * Register a new user (Admin or Servant)
-   */
   @Post('register')
-  @ApiOperation({ summary: 'Register a new user (Admin or Servant)' })
+  @ApiOperation({ 
+    summary: 'Register a new user',
+    description: 'Creates a new user account with the specified role (Admin or Servant)'
+  })
   @ApiBody({ type: CreateUserDto })
   @ApiResponse({
     status: 201,
     description: 'User successfully registered',
-  })
-  @ApiResponse({
-    status: 409,
-    description: 'Email already exists',
+    type: RegisterResponseDto
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid data or validation error',
-  })
-  async register(@Body() createUserDto: CreateUserDto) {
-    return await this.authService.register(createUserDto);
-  }
-
-  /**
-   * Login using email and password
-   */
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Authenticate user and return JWT token' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        email: { type: 'string', example: 'john@example.com' },
-        password: { type: 'string', example: 'mypassword123' },
-      },
-      required: ['email', 'password'],
-    },
+    description: 'Invalid input - Please check password requirements and email format'
   })
   @ApiResponse({
+    status: 409,
+    description: 'Email already exists'
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error'
+  })
+  async register(@Body() createUserDto: CreateUserDto): Promise<RegisterResponseDto> {
+    const user = await this.authService.register(createUserDto);
+    return {
+      id: user['_id'].toString(),
+      email: user.email,
+      role: user.role
+    };
+  }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'User login',
+    description: 'Authenticates a user and returns a JWT token'
+  })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({
     status: 200,
-    description: 'Login successful',
-    schema: {
-      example: {
-        message: 'Login successful',
-        access_token: 'jwt.token.here',
-      },
-    },
+    description: 'Successfully authenticated',
+    type: TokenResponseDto
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid email or password',
+    description: 'Invalid credentials'
   })
-  async login(@Body() body: { email: string; password: string }) {
-    const user = await this.authService.validateUser(body.email, body.password);
-    return await this.authService.login(user);
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input format'
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error'
+  })
+  async login(@Body() loginDto: LoginDto): Promise<TokenResponseDto> {
+    const result = await this.authService.login(loginDto);
+    return {
+      access_token: result.access_token,
+      role: result.role,
+    };
   }
 }

@@ -29,7 +29,6 @@ export class UsersService {
 
       // Hash the password
       const hashedPassword = await bcrypt.hash(createUserDto.password, this.SALT_ROUNDS);
-      
       const created = new this.userModel({
         ...createUserDto,
         email: createUserDto.email.toLowerCase(),
@@ -63,8 +62,13 @@ export class UsersService {
   }
 async findByEmail(email: string, includePassword = false): Promise<User> {
   try {
-    const query = this.userModel.findOne({ email: email.toLowerCase() });
-    if (!includePassword) query.select('-password');
+    let query = this.userModel.findOne({ email: email.toLowerCase() });
+    // If password is needed, explicitly include it
+    if (includePassword) {
+      query = query.select('+password');
+    } else {
+      query = query.select('-password');
+    }
     const user = await query.exec();
 
     if (!user) throw new UserNotFoundError(email);
