@@ -61,6 +61,20 @@ export class UsersService {
       this.handleError(err, `find user ${id}`);
     }
   }
+async findByEmail(email: string, includePassword = false): Promise<User> {
+  try {
+    const query = this.userModel.findOne({ email: email.toLowerCase() });
+    if (!includePassword) query.select('-password');
+    const user = await query.exec();
+
+    if (!user) throw new UserNotFoundError(email);
+    return user;
+  } catch (err: any) {
+    this.handleError(err, `find user by email ${email}`);
+  }
+}
+
+
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     try {
