@@ -1,6 +1,6 @@
 import { Injectable, ConflictException, NotFoundException, InternalServerErrorException, Logger, HttpException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Servantee, ServanteeDocument } from './schemas/servantee.schema';
 import { CreateServanteeDto } from './dto/create-servantee.dto';
 import { UpdateServanteeDto } from './dto/update-servantee.dto';
@@ -14,24 +14,25 @@ export class ServanteesService {
     @InjectModel(Servantee.name) private servanteeModel: Model<ServanteeDocument>,
   ) {}
 
-  async create(createServanteeDto: CreateServanteeDto): Promise<Servantee> {
+  async create(createServanteeDto: CreateServanteeDto, userId: string): Promise<Servantee> {
     try {
       if (!createServanteeDto.phone) {
         throw new BadRequestException('Phone number is required');
       }
 
-      // Normalize phone number (remove spaces, dashes, etc.)
       createServanteeDto.phone = this.normalizePhoneNumber(createServanteeDto.phone);
 
-      const existing = await this.servanteeModel.findOne({ 
-        phone: createServanteeDto.phone 
-      }).exec();
-      
+      const existing = await this.servanteeModel.findOne({ phone: createServanteeDto.phone }).exec();
       if (existing) {
         throw new DuplicatePhoneError(createServanteeDto.phone);
       }
 
-      const created = new this.servanteeModel(createServanteeDto);
+      const created = new this.servanteeModel({
+        ...createServanteeDto,
+        createdBy: new Types.ObjectId(userId),
+        updatedBy: new Types.ObjectId(userId),
+      });
+
       return await created.save();
     } catch (err: any) {
       this.handleError(err, 'create servantee');
@@ -39,67 +40,60 @@ export class ServanteesService {
   }
 
   async findAll(): Promise<Servantee[]> {
-    return this.servanteeModel.find().exec();
+    return this.servanteeModel.find().populate('createdBy', 'email role').populate('updatedBy', 'email role').exec();
   }
 
   async findOne(id: string): Promise<Servantee> {
     try {
-      const servantee = await this.servanteeModel.findById(id).exec();
-      if (!servantee) {
-        throw new ServanteeNotFoundError(id);
-      }
+      const servantee = await this.servanteeModel
+        .findById(id)
+        .populate('createdBy', 'email role')
+        .populate('updatedBy', 'email role')
+        .exec();
+
+      if (!servantee) throw new ServanteeNotFoundError(id);
       return servantee;
     } catch (err: any) {
       this.handleError(err, `find servantee ${id}`);
     }
   }
 
- async update(id: string, updateServanteeDto: UpdateServanteeDto): Promise<Servantee> {
-  try {
-    // Check if servantee exists first
-    const servantee = await this.servanteeModel.findById(id).exec();
-    if (!servantee) {
-      throw new ServanteeNotFoundError(id);
-    }
+  async update(id: string, updateServanteeDto: UpdateServanteeDto, userId: string): Promise<Servantee> {
+    try {
+      const servantee = await this.servanteeModel.findById(id).exec();
+      if (!servantee) throw new ServanteeNotFoundError(id);
 
-    // Normalize and validate phone if provided
-    if (updateServanteeDto.phone) {
-      updateServanteeDto.phone = this.normalizePhoneNumber(updateServanteeDto.phone);
+      if (updateServanteeDto.phone) {
+        updateServanteeDto.phone = this.normalizePhoneNumber(updateServanteeDto.phone);
 
-      // Check for duplicate phone number among other servantees
-      const existing = await this.servanteeModel.findOne({
-        phone: updateServanteeDto.phone,
-        _id: { $ne: id },
-      }).exec();
+        const existing = await this.servanteeModel.findOne({
+          phone: updateServanteeDto.phone,
+          _id: { $ne: id },
+        }).exec();
 
-      if (existing) {
-        throw new DuplicatePhoneError(updateServanteeDto.phone);
+        if (existing) throw new DuplicatePhoneError(updateServanteeDto.phone);
       }
+
+      const updated = await this.servanteeModel.findByIdAndUpdate(
+        id,
+        { ...updateServanteeDto, updatedBy: new Types.ObjectId(userId) },
+        { new: true },
+      ).exec();
+
+      if (!updated) throw new ServanteeNotFoundError(id);
+
+      return updated;
+    } catch (err: any) {
+      this.handleError(err, `update servantee ${id}`);
     }
-
-    // Proceed with update
-    const updated = await this.servanteeModel
-      .findByIdAndUpdate(id, updateServanteeDto, { new: true })
-      .exec();
-
-    // Just in case (rarely happens if doc deleted in between)
-    if (!updated) {
-      throw new ServanteeNotFoundError(id);
-    }
-
-    return updated;
-  } catch (err: any) {
-    this.handleError(err, `update servantee ${id}`);
   }
-}
 
-
-  async remove(id: string): Promise<Servantee> {
+  async remove(id: string, userId: string): Promise<Servantee> {
     try {
       const deleted = await this.servanteeModel.findByIdAndDelete(id).exec();
-      if (!deleted) {
-        throw new ServanteeNotFoundError(id);
-      }
+      if (!deleted) throw new ServanteeNotFoundError(id);
+
+      this.logger.log(`User ${userId} deleted servantee ${id}`);
       return deleted;
     } catch (err: any) {
       this.handleError(err, `remove servantee ${id}`);
@@ -107,17 +101,11 @@ export class ServanteesService {
   }
 
   private handleError(err: any, operation: string): never {
-    if (err instanceof HttpException) {
-      throw err;
-    }
+    if (err instanceof HttpException) throw err;
 
     if (err instanceof ServanteeError) {
-      if (err instanceof ServanteeNotFoundError) {
-        throw new NotFoundException(err.message);
-      }
-      if (err instanceof DuplicatePhoneError) {
-        throw new ConflictException(err.message);
-      }
+      if (err instanceof ServanteeNotFoundError) throw new NotFoundException(err.message);
+      if (err instanceof DuplicatePhoneError) throw new ConflictException(err.message);
     }
 
     if (err?.code === 11000) {
@@ -130,7 +118,6 @@ export class ServanteesService {
   }
 
   private normalizePhoneNumber(phone: string): string {
-    // Remove all non-digit characters
     return phone.replace(/\D/g, '');
   }
 }
