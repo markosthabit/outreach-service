@@ -1,16 +1,21 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
+  Req,
+  UseGuards,
   HttpCode,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { TokenResponseDto, RegisterResponseDto } from './dto/auth-response.dto';
+import { ProfileResponseDto } from './dto/profile-response.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
 
 @ApiTags('Authentication')
@@ -19,38 +24,6 @@ export class AuthController {
   private readonly logger = new Logger(AuthController.name);
   
   constructor(private readonly authService: AuthService) {}
-
-  @Post('register')
-  @ApiOperation({ 
-    summary: 'Register a new user',
-    description: 'Creates a new user account with the specified role (Admin or Servant)'
-  })
-  @ApiBody({ type: CreateUserDto })
-  @ApiResponse({
-    status: 201,
-    description: 'User successfully registered',
-    type: RegisterResponseDto
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid input - Please check password requirements and email format'
-  })
-  @ApiResponse({
-    status: 409,
-    description: 'Email already exists'
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal server error'
-  })
-  async register(@Body() createUserDto: CreateUserDto): Promise<RegisterResponseDto> {
-    const user = await this.authService.register(createUserDto);
-    return {
-      id: user['_id'].toString(),
-      email: user.email,
-      role: user.role
-    };
-  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -82,5 +55,29 @@ export class AuthController {
       access_token: result.access_token,
       role: result.role,
     };
+  }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get user profile',
+    description: 'Returns the profile information of the authenticated user'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User profile retrieved successfully',
+    type: ProfileResponseDto
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing JWT token'
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Token is valid but user is not authorized'
+  })
+  async getProfile(@Req() req): Promise<ProfileResponseDto> {
+    return req.user;
   }
 }

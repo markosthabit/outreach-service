@@ -22,53 +22,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  /**
-   * User self-registration (servants or admins, depending on who calls it).
-   * Admins can also create users directly via UsersService.create().
-   */
-  async register(createUserDto: CreateUserDto): Promise<User> {
-    try {
-      // Check password strength
-      if (!this.isPasswordStrong(createUserDto.password)) {
-        throw new WeakPasswordException();
-      }
-
-      // Ensure email not already registered
-      let existingUser: User | null = null;
-      try {
-        existingUser = await this.usersService.findByEmail(createUserDto.email);
-      } catch (err) {
-        if (!(err instanceof NotFoundException)) throw err;
-      }
-
-      if (existingUser) {
-        throw new UserExistsException(createUserDto.email);
-      }
-
-      // Let UsersService handle hashing and saving
-      const user = await this.usersService.create({
-        ...createUserDto,
-        email: createUserDto.email.toLowerCase(),
-      });
-
-      this.logger.log(`User registered successfully: ${user.email}`);
-      return user;
-    } catch (error) {
-      if (error instanceof HttpException) throw error;
-
-      this.logger.error(
-        `Failed to register user: ${error.message}`,
-        error.stack,
-      );
-
-      if (error.name === 'ValidationError') throw error;
-      if (error.code === 11000) {
-        throw new UserExistsException(createUserDto.email);
-      }
-
-      throw error;
-    }
-  }
 
   /**
    * User login — validates credentials and returns JWT.
