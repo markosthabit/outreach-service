@@ -54,34 +54,45 @@ export class ServanteesService {
     }
   }
 
-  async update(id: string, updateServanteeDto: UpdateServanteeDto): Promise<Servantee> {
-    try {
-      if (updateServanteeDto.phone) {
-        updateServanteeDto.phone = this.normalizePhoneNumber(updateServanteeDto.phone);
-        
-        // Check if phone number is already used by another servantee
-        const existing = await this.servanteeModel.findOne({
-          phone: updateServanteeDto.phone,
-          _id: { $ne: id }
-        }).exec();
-        
-        if (existing) {
-          throw new DuplicatePhoneError(updateServanteeDto.phone);
-        }
-      }
-
-      const updated = await this.servanteeModel
-        .findByIdAndUpdate(id, updateServanteeDto, { new: true })
-        .exec();
-
-      if (!updated) {
-        throw new ServanteeNotFoundError(id);
-      }
-      return updated;
-    } catch (err: any) {
-      this.handleError(err, `update servantee ${id}`);
+ async update(id: string, updateServanteeDto: UpdateServanteeDto): Promise<Servantee> {
+  try {
+    // Check if servantee exists first
+    const servantee = await this.servanteeModel.findById(id).exec();
+    if (!servantee) {
+      throw new ServanteeNotFoundError(id);
     }
+
+    // Normalize and validate phone if provided
+    if (updateServanteeDto.phone) {
+      updateServanteeDto.phone = this.normalizePhoneNumber(updateServanteeDto.phone);
+
+      // Check for duplicate phone number among other servantees
+      const existing = await this.servanteeModel.findOne({
+        phone: updateServanteeDto.phone,
+        _id: { $ne: id },
+      }).exec();
+
+      if (existing) {
+        throw new DuplicatePhoneError(updateServanteeDto.phone);
+      }
+    }
+
+    // Proceed with update
+    const updated = await this.servanteeModel
+      .findByIdAndUpdate(id, updateServanteeDto, { new: true })
+      .exec();
+
+    // Just in case (rarely happens if doc deleted in between)
+    if (!updated) {
+      throw new ServanteeNotFoundError(id);
+    }
+
+    return updated;
+  } catch (err: any) {
+    this.handleError(err, `update servantee ${id}`);
   }
+}
+
 
   async remove(id: string): Promise<Servantee> {
     try {
