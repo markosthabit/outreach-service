@@ -4,7 +4,14 @@ import { CreateServanteeDto } from './dto/create-servantee.dto';
 import { UpdateServanteeDto } from './dto/update-servantee.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ParseObjectIdPipe } from '../common/pipes/parse-objectid.pipe';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { UseGuards } from '@nestjs/common';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { UserRole } from 'src/users/schemas/user.schema';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN, UserRole.SERVANT) 
 @ApiTags('Servantees')
 @Controller('servantees')
 export class ServanteesController {
