@@ -1,0 +1,179 @@
+import {
+  Injectable,
+  Logger,
+  HttpException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { Retreat } from './schemas/retreat.schema';
+import { Servantee } from 'src/servantees/schemas/servantee.schema';
+import { CreateRetreatDto } from './dto/create-retreat.dto';
+import { UpdateRetreatDto } from './dto/update-retreat.dto';
+import {
+  RetreatNotFoundException,
+  InvalidRetreatIdException,
+  RetreatDatesInvalidException,
+  RetreatAttendeeNotFoundException,
+  RetreatOperationFailedException,
+} from './exceptions/retreats.exceptions';
+
+@Injectable()
+export class RetreatsService {
+  private readonly logger = new Logger(RetreatsService.name);
+
+  constructor(
+    @InjectModel(Retreat.name) private retreatModel: Model<Retreat>,
+    @InjectModel(Servantee.name) private servanteeModel: Model<Servantee>,
+  ) {}
+
+  async create(createDto: CreateRetreatDto): Promise<Retreat> {
+    try {
+      // Validate dates
+      const startDate = new Date(createDto.startDate);
+      const endDate = new Date(createDto.endDate);
+
+      if (endDate < startDate) {
+        throw new RetreatDatesInvalidException('End date cannot be before start date');
+      }
+
+      // Validate attendees exist if provided
+      if (createDto.attendees?.length) {
+        const attendees = await this.servanteeModel.find({
+          _id: { $in: createDto.attendees },
+        });
+
+        if (attendees.length !== createDto.attendees.length) {
+          const found = new Set(attendees.map(a => a._id.toString()));
+          const notFound = createDto.attendees.find(id => !found.has(id.toString()));
+          throw new RetreatAttendeeNotFoundException(notFound!.toString());
+        }
+      }
+
+      const retreat = new this.retreatModel(createDto);
+      const saved = await retreat.save();
+
+      // Update each Servantee’s retreats list
+      if (createDto.attendees?.length) {
+        await this.servanteeModel.updateMany(
+          { _id: { $in: createDto.attendees } },
+          { $addToSet: { retreats: saved._id } },
+        );
+      }
+
+      return saved;
+    } catch (error) {
+      this.logger.error(`Failed to create retreat: ${error.message}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new RetreatOperationFailedException('create', error.message);
+    }
+  }
+
+  async findAll(): Promise<Retreat[]> {
+    try {
+      return await this.retreatModel
+        .find()
+        .populate('attendees', 'name')
+        .populate('notes', 'content');
+    } catch (error) {
+      this.logger.error(`Failed to fetch retreats: ${error.message}`, error.stack);
+      throw new RetreatOperationFailedException('fetch', error.message);
+    }
+  }
+
+  async findOne(id: string): Promise<Retreat> {
+    try {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new InvalidRetreatIdException(id);
+      }
+
+      const retreat = await this.retreatModel
+        .findById(id)
+        .populate('attendees', 'name')
+        .populate('notes', 'content');
+
+      if (!retreat) {
+        throw new RetreatNotFoundException(id);
+      }
+
+      return retreat;
+    } catch (error) {
+      this.logger.error(`Failed to fetch retreat ${id}: ${error.message}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new RetreatOperationFailedException('fetch', error.message);
+    }
+  }
+
+  async update(id: string, updateDto: UpdateRetreatDto): Promise<Retreat> {
+    try {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new InvalidRetreatIdException(id);
+      }
+
+      // Validate dates if both are provided
+      if (updateDto.startDate && updateDto.endDate) {
+        const startDate = new Date(updateDto.startDate);
+        const endDate = new Date(updateDto.endDate);
+        if (endDate < startDate) {
+          throw new RetreatDatesInvalidException('End date cannot be before start date');
+        }
+      }
+
+      // Validate attendees exist if provided
+      if (updateDto.attendees?.length) {
+        const attendees = await this.servanteeModel.find({
+          _id: { $in: updateDto.attendees },
+        });
+
+        if (attendees.length !== updateDto.attendees.length) {
+          const found = new Set(attendees.map(a => a._id.toString()));
+          const notFound = updateDto.attendees.find(id => !found.has(id.toString()));
+          throw new RetreatAttendeeNotFoundException(notFound!.toString());
+        }
+      }
+
+      const updated = await this.retreatModel
+        .findByIdAndUpdate(id, updateDto, {
+          new: true,
+        })
+        .populate('attendees', 'name')
+        .populate('notes', 'content');
+
+      if (!updated) {
+        throw new RetreatNotFoundException(id);
+      }
+
+      return updated;
+    } catch (error) {
+      this.logger.error(`Failed to update retreat ${id}: ${error.message}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new RetreatOperationFailedException('update', error.message);
+    }
+  }
+
+  async remove(id: string): Promise<void> {
+    try {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new InvalidRetreatIdException(id);
+      }
+
+      const retreat = await this.retreatModel.findById(id);
+      if (!retreat) {
+        throw new RetreatNotFoundException(id);
+      }
+
+      await retreat.deleteOne();
+
+      // Remove from Servantees
+      await this.servanteeModel.updateMany(
+        { retreats: id },
+        { $pull: { retreats: id } },
+      );
+    } catch (error) {
+      this.logger.error(`Failed to delete retreat ${id}: ${error.message}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new RetreatOperationFailedException('delete', error.message);
+    }
+  }
+}

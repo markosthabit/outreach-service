@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from '../../users/schemas/user.schema'; // Make sure this path is correct
+import { User } from '../../users/schemas/user.schema'; 
 
 export type ServanteeDocument = Servantee & Document;
 
@@ -38,6 +38,11 @@ export class Servantee {
   @ApiProperty({ type: [String], required: false })
   @Prop([String])
   notes: string[];
+
+  @ApiProperty({ type: [Types.ObjectId], required: false })
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Retreat' }] })
+  retreats: Types.ObjectId[];
+  
 
   @ApiProperty({ default: true })
   @Prop({ default: true })
