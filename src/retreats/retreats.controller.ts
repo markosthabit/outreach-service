@@ -8,17 +8,30 @@ import {
   Delete,
   UseFilters,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { RetreatsService } from './retreats.service';
 import { CreateRetreatDto } from './dto/create-retreat.dto';
 import { UpdateRetreatDto } from './dto/update-retreat.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
 import { ParseObjectIdPipe } from '../common/pipes/parse-objectid.pipe';
 import { Retreat } from './schemas/retreat.schema';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../users/schemas/user.schema';
 
 @ApiTags('Retreats')
 @Controller('retreats')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth()
 @UseFilters(AllExceptionsFilter)
 export class RetreatsController {
   constructor(private readonly retreatsService: RetreatsService) {}

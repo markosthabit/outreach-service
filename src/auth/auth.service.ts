@@ -1,64 +1,70 @@
-import { Injectable, Logger, NotFoundException, HttpException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+// auth.service.ts
+import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
-import { CreateUserDto } from '../users/dto/create-user.dto';
-import { LoginDto } from './dto/login.dto';
-import { User } from '../users/schemas/user.schema';
-import { TokenResponseDto } from './dto/auth-response.dto';
-import {
-  InvalidCredentialsException,
-  UserExistsException,
-  WeakPasswordException,
-  TokenGenerationException,
-} from './exceptions/auth.exceptions';
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
+  constructor(private usersService: UsersService, private jwtService: JwtService) {}
+  async login(email: string, password: string) {
+    const user = await this.usersService.findByEmail(email, true);
+    if (!user) throw new UnauthorizedException('Invalid credentials');
 
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly jwtService: JwtService,
-  ) {}
+    const passwordMatches = await bcrypt.compare(password, user.password);
+    if (!passwordMatches) throw new UnauthorizedException('Invalid credentials');
 
-
-  /**
-   * User login — validates credentials and returns JWT.
-   */
-  async login(loginDto: LoginDto): Promise<TokenResponseDto> {
-    try {
-      const user = await this.usersService.findByEmail(loginDto.email, true);
-      if (!user) throw new InvalidCredentialsException();
-
-      const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
-      if (!isPasswordValid) throw new InvalidCredentialsException();
-
-      const payload = { sub: user['_id'].toString(), email: user.email, role: user.role };
-      const accessToken = await this.jwtService.signAsync(payload);
-
-      return { access_token: accessToken, role: user.role };
-    } catch (error) {
-      if (error instanceof HttpException) throw error;
-
-      this.logger.error(`Failed to authenticate user: ${error.message}`, error.stack);
-      throw error;
-    }
+    const tokens = await this.getTokens(user.id, user.email, user.role);
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+    return { user: this.stripSensitive(user), accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
   }
 
-  private isPasswordStrong(password: string): boolean {
-    const minLength = 8;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  async getTokens(userId: string, email: string, role) {
+    const payload = { sub: userId, email, role };
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: process.env.JWT_ACCESS_SECRET,
+      expiresIn: '15m',
+    });
+    const refreshToken = await this.jwtService.signAsync({ sub: userId }, {
+      secret: process.env.JWT_REFRESH_SECRET,
+      expiresIn: '7d',
+    });
+    return { accessToken, refreshToken };
+  }
 
-    return (
-      password.length >= minLength &&
-      hasUpperCase &&
-      hasLowerCase &&
-      hasNumbers &&
-      hasSpecialChar
-    );
+  async updateRefreshTokenHash(userId: string, refreshToken: string) {
+    const hash = await bcrypt.hash(refreshToken, 10);
+    return this.usersService.setRefreshTokenHash(userId, hash);
+  }
+
+  async getUserIfRefreshTokenMatches(userId: string, refreshToken: string) {
+    const user = await this.usersService.findOneWithRefreshToken(userId);
+
+    if (!user || !user.refreshTokenHash) return null;
+    const matches = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+    if (!matches) return null;
+    return user;
+  }
+
+  async refreshTokens(userId: string, refreshToken: string) {
+    const user = await this.getUserIfRefreshTokenMatches(userId, refreshToken);
+    console.log("user: ", user);
+    if (!user) throw new ForbiddenException('Invalid refresh token');
+    const tokens = await this.getTokens(user.id, user.email, user.role);
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken); // rotate
+    return tokens;
+  }
+
+  async logout(userId: string) {
+    return this.usersService.clearRefreshToken(userId);
+  }
+
+  private stripSensitive(user) {
+    // remove password, refresh hash, etc
+    const plain = user.toObject ? user.toObject() : user; // convert if possible
+    const { password, refreshTokenHash, ...rest } = plain;
+    console.log(plain);
+    console.log("rest: ", rest);
+    return rest;
   }
 }

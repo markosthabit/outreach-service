@@ -16,7 +16,7 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto): Promise<UserDocument> {
     try {
       // Check for existing email
       const existing = await this.userModel.findOne({ 
@@ -49,7 +49,7 @@ export class UsersService {
     }
   }
 
-  async findOne(id: string): Promise<User> {
+  async findOne(id: string): Promise<UserDocument> {
     try {
       const user = await this.userModel.findById(id).select('-password').exec();
       if (!user) {
@@ -60,16 +60,21 @@ export class UsersService {
       this.handleError(err, `find user ${id}`);
     }
   }
-async findByEmail(email: string, includePassword = false): Promise<User> {
+
+  async findOneWithRefreshToken(userId: string) {
+  return this.userModel.findById(userId).select('+refreshTokenHash');
+}
+
+async findByEmail(email: string, includePassword = false): Promise<UserDocument> {
   try {
-    let query = this.userModel.findOne({ email: email.toLowerCase() });
+    let query = this.userModel.findOne({ email: email.toLowerCase() }) as any;
     // If password is needed, explicitly include it
     if (includePassword) {
       query = query.select('+password');
     } else {
       query = query.select('-password');
     }
-    const user = await query.exec();
+    const user: UserDocument | null = await query.exec();
 
     if (!user) throw new UserNotFoundError(email);
     return user;
@@ -80,7 +85,7 @@ async findByEmail(email: string, includePassword = false): Promise<User> {
 
 
 
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<UserDocument> {
     try {
       if (updateUserDto.email) {
         // Check if email is already used by another user
@@ -118,7 +123,7 @@ async findByEmail(email: string, includePassword = false): Promise<User> {
     }
   }
 
-  async remove(id: string): Promise<User> {
+  async remove(id: string): Promise<UserDocument> {
     try {
       const deleted = await this.userModel.findByIdAndDelete(id).select('-password').exec();
       if (!deleted) {
@@ -129,6 +134,16 @@ async findByEmail(email: string, includePassword = false): Promise<User> {
       this.handleError(err, `remove user ${id}`);
     }
   }
+
+async setRefreshTokenHash(userId: string, hash: string): Promise<void> {
+  await this.userModel.findByIdAndUpdate(userId, { refreshTokenHash: hash });
+}
+
+async clearRefreshToken(userId: string): Promise<void> {
+  await this.userModel.findByIdAndUpdate(userId, { refreshTokenHash: null });
+}
+
+
 
   private handleError(err: any, operation: string): never {
     if (err instanceof HttpException) {
@@ -155,4 +170,5 @@ async findByEmail(email: string, includePassword = false): Promise<User> {
     this.logger.error(`Failed to ${operation}`, err?.stack || err);
     throw new InternalServerErrorException(`Failed to ${operation}`);
   }
+  
 }
