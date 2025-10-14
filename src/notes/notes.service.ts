@@ -1,26 +1,141 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, HttpException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { Note } from './schemas/note.schema';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
+import { Servantee } from '../servantees/schemas/servantee.schema';
+import { Retreat } from '../retreats/schemas/retreat.schema';
+import {
+  NoteNotFoundException,
+  InvalidNoteIdException,
+  InvalidEntityIdException,
+  EntityNotFoundException,
+  NoteOperationFailedException,
+  MissingEntityIdException,
+} from './exceptions/notes.exceptions';
 
 @Injectable()
 export class NotesService {
-  create(createNoteDto: CreateNoteDto) {
-    return 'This action adds a new note';
+  private readonly logger = new Logger(NotesService.name);
+
+  constructor(
+    @InjectModel(Note.name) private readonly noteModel: Model<Note>,
+    @InjectModel(Servantee.name) private readonly servanteeModel: Model<Servantee>,
+    @InjectModel(Retreat.name) private readonly retreatModel: Model<Retreat>,
+  ) {}
+
+  async create(createNoteDto: CreateNoteDto): Promise<Note> {
+    try {
+      const { servanteeId, retreatId } = createNoteDto;
+
+      if (!servanteeId && !retreatId) {
+        throw new MissingEntityIdException();
+      }
+
+      if (servanteeId) {
+        if (!Types.ObjectId.isValid(servanteeId)) {
+          throw new InvalidEntityIdException('servantee');
+        }
+        const servanteeExists = await this.servanteeModel.findById(servanteeId);
+        if (!servanteeExists) {
+          throw new EntityNotFoundException('Servantee', servanteeId.toString());
+        }
+      }
+
+      if (retreatId) {
+        if (!Types.ObjectId.isValid(retreatId)) {
+          throw new InvalidEntityIdException('retreat');
+        }
+        const retreatExists = await this.retreatModel.findById(retreatId);
+        if (!retreatExists) {
+          throw new EntityNotFoundException('Retreat', retreatId.toString());
+        }
+      }
+
+      const newNote = new this.noteModel(createNoteDto);
+      return await newNote.save();
+    } catch (error) {
+      this.logger.error(`Failed to create note: ${error.message}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new NoteOperationFailedException('create', error.message);
+    }
   }
 
-  findAll() {
-    return `This action returns all notes`;
+  async findAllForServantee(servanteeId: string): Promise<Note[]> {
+    try {
+      if (!Types.ObjectId.isValid(servanteeId)) {
+        throw new InvalidEntityIdException('servantee');
+      }
+      return await this.noteModel.find({ servantee: servanteeId }).exec();
+    } catch (error) {
+      this.logger.error(
+        `Failed to find notes for servantee ${servanteeId}: ${error.message}`,
+        error.stack,
+      );
+      throw new NoteOperationFailedException('find', error.message);
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} note`;
+  async findAllForRetreat(retreatId: string): Promise<Note[]> {
+    try {
+      if (!Types.ObjectId.isValid(retreatId)) {
+        throw new InvalidEntityIdException('retreat');
+      }
+      return await this.noteModel.find({ retreat: retreatId }).exec();
+    } catch (error) {
+      this.logger.error(
+        `Failed to find notes for retreat ${retreatId}: ${error.message}`,
+        error.stack,
+      );
+      throw new NoteOperationFailedException('find', error.message);
+    }
   }
 
-  update(id: number, updateNoteDto: UpdateNoteDto) {
-    return `This action updates a #${id} note`;
+  async findOne(noteId: string): Promise<Note> {
+    try {
+      if (!Types.ObjectId.isValid(noteId)) {
+        throw new InvalidNoteIdException();
+      }
+      const note = await this.noteModel.findById(noteId);
+      if (!note) {
+        throw new NoteNotFoundException(noteId);
+      }
+      return note;
+    } catch (error) {
+      this.logger.error(`Failed to find note ${noteId}: ${error.message}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new NoteOperationFailedException('find', error.message);
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} note`;
+  async update(noteId: string, updateNoteDto: UpdateNoteDto): Promise<Note> {
+    try {
+      await this.findOne(noteId); // a validation to check if note exists
+      const updatedNote = await this.noteModel.findByIdAndUpdate(noteId, updateNoteDto, {
+        new: true,
+      });
+      if (!updatedNote) {
+        throw new NoteNotFoundException(noteId);
+      }
+      return updatedNote;
+    } catch (error) {
+      this.logger.error(`Failed to update note ${noteId}: ${error.message}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new NoteOperationFailedException('update', error.message);
+    }
+  }
+
+  async delete(noteId: string): Promise<void> {
+    try {
+      const result = await this.noteModel.deleteOne({ _id: noteId });
+      if (result.deletedCount === 0) {
+        throw new NoteNotFoundException(noteId);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to delete note ${noteId}: ${error.message}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new NoteOperationFailedException('delete', error.message);
+    }
   }
 }
