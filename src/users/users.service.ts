@@ -139,8 +139,8 @@ async setRefreshTokenHash(userId: string, hash: string): Promise<void> {
   await this.userModel.findByIdAndUpdate(userId, { refreshTokenHash: hash });
 }
 
-async clearRefreshToken(userId: string): Promise<void> {
-  await this.userModel.findByIdAndUpdate(userId, { refreshTokenHash: null });
+async clearRefreshToken(userId: string) {
+  return this.userModel.updateOne({ _id: userId }, { $unset: { refreshTokenHash: 1 } });
 }
 
 

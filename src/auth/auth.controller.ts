@@ -70,7 +70,7 @@ export class AuthController {
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: '/',
+      path: '/',
   });
 
   // Return minimal info in the body (avoid leaking tokens)
@@ -136,5 +136,41 @@ async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
   });
 
   return { accessToken: tokens.accessToken };
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      // no cookie -> nothing to do, but respond OK
+      res.clearCookie('refresh_token', { path: '/' });
+            res.clearCookie('access_token', { path: '/' });
+      return { ok: true };
+    }
+
+    try {
+      // verify token integrity
+      const payload = this.authService['jwtService'].verify(refreshToken, { secret: process.env.JWT_REFRESH_SECRET });
+      await this.authService.logout(payload.sub);
+    } catch (err) {
+      // if token invalid/expired, still clear cookie (graceful)
+    }
+
+    res.clearCookie('refresh_token', {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+    res.clearCookie('access_token', {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    return { ok: true };
   }
 }
