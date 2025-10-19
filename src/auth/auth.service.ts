@@ -63,8 +63,6 @@ export class AuthService {
     // remove password, refresh hash, etc
     const plain = user.toObject ? user.toObject() : user; // convert if possible
     const { password, refreshTokenHash, ...rest } = plain;
-    console.log(plain);
-    console.log("rest: ", rest);
     return rest;
   }
 }

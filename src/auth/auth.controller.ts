@@ -135,6 +135,6 @@ async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
-  return { message: 'Tokens refreshed' };
-}
+  return { accessToken: tokens.accessToken };
+  }
 }
