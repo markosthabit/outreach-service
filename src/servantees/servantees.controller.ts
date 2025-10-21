@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
   Patch,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -59,14 +60,26 @@ export class ServanteesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all servantees' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of all servantees.',
-  })
-  async findAll() {
-    return this.servanteesService.findAll();
-  }
+ @ApiOperation({ summary: 'Get all servantees with pagination and search' })
+@ApiResponse({
+  status: 200,
+  description: 'List of servantees with pagination metadata.',
+})
+async findAll(
+  @Query('page') page = '1',
+  @Query('limit') limit = '10',
+  @Query('search') search = '',
+) {
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10)); // prevent abuse
+
+
+  return this.servanteesService.findAll({
+    page: pageNum,
+    limit: limitNum,
+    search,
+  });
+}
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a servantee by ID' })

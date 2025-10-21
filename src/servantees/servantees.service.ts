@@ -39,9 +39,60 @@ export class ServanteesService {
     }
   }
 
-  async findAll(): Promise<Servantee[]> {
-    return this.servanteeModel.find().populate('createdBy', 'email role').populate('updatedBy', 'email role').exec();
+async findAll({
+  page,
+  limit,
+  search,
+}: {
+  page: number;
+  limit: number;
+  search: string;
+}): Promise<{
+  data: Servantee[];
+  total: number;
+  page: number;
+  pages: number;
+}> {
+  try {
+    const filter: Record<string, any> = {};
+
+    if (search) {
+      const regex = new RegExp(search, 'i');
+      filter.$or = [
+        { name: regex },
+        { phone: regex },
+        { church: regex },
+        { education: regex },
+        { work: regex },
+      ];
+    }
+
+    const total = await this.servanteeModel.countDocuments(filter);
+    const pages = Math.ceil(total / limit);
+        const currentPage = Math.min(Math.max(1, page), pages);
+
+    const skip = (page - 1) * limit;
+
+    const data = await this.servanteeModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('createdBy', 'email role')
+      .populate('updatedBy', 'email role')
+      .exec();
+
+    return {
+      data,
+      total,
+      page: currentPage,
+      pages,
+    };
+  } catch (err: any) {
+    this.handleError(err, 'find all servantees');
   }
+}
+
 
   async findOne(id: string): Promise<Servantee> {
     try {
