@@ -8,6 +8,7 @@ import {
   Put,
   Req,
   UseGuards,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -75,7 +76,7 @@ export class ServanteesController {
     return this.servanteesService.findOne(id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @ApiOperation({ summary: 'Update a servantee by ID' })
   @ApiResponse({ status: 200, description: 'Servantee updated successfully.' })
   @ApiResponse({ status: 404, description: 'Servantee not found.' })
