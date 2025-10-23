@@ -37,7 +37,7 @@ export class Servantee {
 
   @ApiProperty({ type: [String], required: false })
   @Prop([String])
-  notes: string[];
+  notes: Types.ObjectId[];
 
   @ApiProperty({ type: [Types.ObjectId], required: false })
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Retreat' }] })

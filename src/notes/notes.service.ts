@@ -1,6 +1,6 @@
 import { Injectable, Logger, HttpException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { DeleteResult, Model, Types } from 'mongoose';
 import { Note } from './schemas/note.schema';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
@@ -67,7 +67,7 @@ export class NotesService {
       if (!Types.ObjectId.isValid(servanteeId)) {
         throw new InvalidEntityIdException('servantee');
       }
-      return await this.noteModel.find({ servantee: servanteeId }).exec();
+      return await this.noteModel.find({ servanteeId: servanteeId }).exec();
     } catch (error) {
       this.logger.error(
         `Failed to find notes for servantee ${servanteeId}: ${error.message}`,
@@ -82,7 +82,7 @@ export class NotesService {
       if (!Types.ObjectId.isValid(retreatId)) {
         throw new InvalidEntityIdException('retreat');
       }
-      return await this.noteModel.find({ retreat: retreatId }).exec();
+      return await this.noteModel.find({ retreatId: retreatId }).exec();
     } catch (error) {
       this.logger.error(
         `Failed to find notes for retreat ${retreatId}: ${error.message}`,
@@ -126,12 +126,14 @@ export class NotesService {
     }
   }
 
-  async delete(noteId: string): Promise<void> {
+  async delete(noteId: string): Promise<DeleteResult> {
     try {
       const result = await this.noteModel.deleteOne({ _id: noteId });
+      
       if (result.deletedCount === 0) {
         throw new NoteNotFoundException(noteId);
       }
+      return result;
     } catch (error) {
       this.logger.error(`Failed to delete note ${noteId}: ${error.message}`, error.stack);
       if (error instanceof HttpException) throw error;

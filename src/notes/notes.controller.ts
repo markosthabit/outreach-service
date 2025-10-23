@@ -28,6 +28,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/schemas/user.schema';
+import { DeleteResult } from 'mongoose';
 
 @ApiTags('Notes')
 @Controller('notes')
@@ -138,7 +139,7 @@ export class NotesController {
     status: HttpStatus.NOT_FOUND,
     description: 'Note not found.',
   })
-  async delete(@Param('noteId', ParseObjectIdPipe) noteId: string): Promise<void> {
+  async delete(@Param('noteId', ParseObjectIdPipe) noteId: string): Promise<DeleteResult> {
     return this.notesService.delete(noteId);
   }
 }
