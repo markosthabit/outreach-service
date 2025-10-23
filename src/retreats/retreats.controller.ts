@@ -9,6 +9,7 @@ import {
   UseFilters,
   HttpStatus,
   UseGuards,
+  Query
 } from '@nestjs/common';
 import { RetreatsService } from './retreats.service';
 import { CreateRetreatDto } from './dto/create-retreat.dto';
@@ -51,19 +52,15 @@ export class RetreatsController {
     return this.retreatsService.create(dto);
   }
 
-  @Get()
-  @ApiOperation({ 
-    summary: 'Get all Retreats',
-    description: 'Retrieves a list of all retreats with populated attendees and notes.'
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'List of retreats retrieved successfully.',
-    type: [Retreat]
-  })
-  async findAll(): Promise<Retreat[]> {
-    return this.retreatsService.findAll();
-  }
+ @Get()
+@ApiOperation({ summary: 'Get paginated Retreats' })
+@ApiResponse({ status: HttpStatus.OK, description: 'Paginated list of retreats' })
+async findAll(
+  @Query('page') page = 1,
+  @Query('limit') limit = 10
+) {
+  return this.retreatsService.findAll(+page, +limit)
+}
 
   @Get(':id')
   @ApiOperation({ 

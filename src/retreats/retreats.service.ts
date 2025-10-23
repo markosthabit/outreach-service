@@ -70,17 +70,27 @@ export class RetreatsService {
     }
   }
 
-  async findAll(): Promise<Retreat[]> {
-    try {
-      return await this.retreatModel
+async findAll(page = 1, limit = 10): Promise<{ data: Retreat[]; total: number; page: number; limit: number }> {
+  try {
+    const skip = (page - 1) * limit
+
+    const [data, total] = await Promise.all([
+      this.retreatModel
         .find()
-        .populate('attendees', 'name')
-        .populate('notes', 'content');
-    } catch (error) {
-      this.logger.error(`Failed to fetch retreats: ${error.message}`, error.stack);
-      throw new RetreatOperationFailedException('fetch', error.message);
-    }
+        .populate('attendees', 'name phone')
+        .populate('notes', 'content')
+        .skip(skip)
+        .limit(limit)
+        .sort({ startDate: -1 }),
+      this.retreatModel.countDocuments(),
+    ])
+
+    return { data, total, page, limit }
+  } catch (error) {
+    this.logger.error(`Failed to fetch retreats: ${error.message}`, error.stack)
+    throw new RetreatOperationFailedException('fetch', error.message)
   }
+}
 
   async findOne(id: string): Promise<Retreat> {
     try {
@@ -90,7 +100,7 @@ export class RetreatsService {
 
       const retreat = await this.retreatModel
         .findById(id)
-        .populate('attendees', 'name')
+        .populate('attendees', 'name phone')
         .populate('notes', 'content');
 
       if (!retreat) {
@@ -137,7 +147,7 @@ export class RetreatsService {
         .findByIdAndUpdate(id, updateDto, {
           new: true,
         })
-        .populate('attendees', 'name')
+        .populate('attendees', 'name phone')
         .populate('notes', 'content');
 
       if (!updated) {
