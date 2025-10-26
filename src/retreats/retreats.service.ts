@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { DeleteResult, Model, Types } from 'mongoose';
 import { Retreat } from './schemas/retreat.schema';
 import { Servantee } from 'src/servantees/schemas/servantee.schema';
 import { CreateRetreatDto } from './dto/create-retreat.dto';
@@ -70,13 +70,21 @@ export class RetreatsService {
     }
   }
 
-async findAll(page = 1, limit = 10): Promise<{ data: Retreat[]; total: number; page: number; limit: number }> {
+async findAll(page = 1, limit = 10, search?: string | undefined): Promise<{ data: Retreat[]; total: number; page: number; limit: number }> {
   try {
     const skip = (page - 1) * limit
-
+ const filter = search
+      ? {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { location: { $regex: search, $options: 'i' } },
+          ],
+        }
+      : {};
+    
     const [data, total] = await Promise.all([
       this.retreatModel
-        .find()
+        .find(filter)
         .populate('attendees', 'name phone')
         .populate('notes', 'content')
         .skip(skip)
@@ -162,7 +170,7 @@ async findAll(page = 1, limit = 10): Promise<{ data: Retreat[]; total: number; p
     }
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string): Promise<DeleteResult> {
     try {
       if (!Types.ObjectId.isValid(id)) {
         throw new InvalidRetreatIdException(id);
@@ -173,17 +181,19 @@ async findAll(page = 1, limit = 10): Promise<{ data: Retreat[]; total: number; p
         throw new RetreatNotFoundException(id);
       }
 
-      await retreat.deleteOne();
+      const deleted = await retreat.deleteOne();
 
       // Remove from Servantees
       await this.servanteeModel.updateMany(
         { retreats: id },
         { $pull: { retreats: id } },
       );
+return deleted;    
     } catch (error) {
       this.logger.error(`Failed to delete retreat ${id}: ${error.message}`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new RetreatOperationFailedException('delete', error.message);
     }
+    
   }
 }

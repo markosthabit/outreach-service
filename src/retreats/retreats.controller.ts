@@ -28,6 +28,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/schemas/user.schema';
+import { DeleteResult } from 'mongoose';
 
 @ApiTags('Retreats')
 @Controller('retreats')
@@ -57,9 +58,11 @@ export class RetreatsController {
 @ApiResponse({ status: HttpStatus.OK, description: 'Paginated list of retreats' })
 async findAll(
   @Query('page') page = 1,
-  @Query('limit') limit = 10
+  @Query('limit') limit = 10,
+    @Query('search') search?: string
+
 ) {
-  return this.retreatsService.findAll(+page, +limit)
+  return this.retreatsService.findAll(+page, +limit, search)
 }
 
   @Get(':id')
@@ -141,7 +144,7 @@ async findAll(
     status: HttpStatus.BAD_REQUEST,
     description: 'Invalid retreat ID format.'
   })
-  async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
+  async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<DeleteResult> {
     return this.retreatsService.remove(id);
   }
 }
