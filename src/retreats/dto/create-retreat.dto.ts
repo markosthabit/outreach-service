@@ -9,6 +9,12 @@ export class CreateRetreatDto {
   })
   @IsString()
   name: string;
+  @ApiProperty({
+    example: 'Al Shuranya',
+    description: 'Locatin of the retreat'
+  })
+  @IsString()
+  location: string;
 
   @ApiProperty({
     example: '2025-06-01T00:00:00.000Z',

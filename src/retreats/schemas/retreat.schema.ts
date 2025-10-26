@@ -12,7 +12,12 @@ export class Retreat extends Document {
   })
   @Prop({ required: true })
   name: string;
-
+  @ApiProperty({
+    example: 'Al-Shurania Church',
+    description: 'Location of the retreat'
+  })
+  @Prop({ required: true })
+  location: string;
   @ApiProperty({
     example: '2025-06-01T00:00:00.000Z',
     description: 'Start date of the retreat'
