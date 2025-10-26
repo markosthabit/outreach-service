@@ -92,6 +92,12 @@ async findAll(
     return this.retreatsService.findOne(id);
   }
 
+  @Get('servantee/:servanteeId')
+async findByServantee(@Param('servanteeId') servanteeId: string) {
+  return this.retreatsService.findByServantee(servanteeId);
+}
+
+
   @Patch(':id')
   @ApiOperation({ 
     summary: 'Update Retreat details',

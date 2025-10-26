@@ -122,6 +122,24 @@ async findAll(page = 1, limit = 10, search?: string | undefined): Promise<{ data
       throw new RetreatOperationFailedException('fetch', error.message);
     }
   }
+  async findByServantee(servanteeId: string): Promise<Retreat[]> {
+  try {
+    if (!Types.ObjectId.isValid(servanteeId)) {
+      throw new BadRequestException('Invalid servantee ID');
+    }
+
+    return await this.retreatModel
+      .find({ attendees: servanteeId })
+      .sort({ startDate: -1 }) // newest first
+      .limit(5) // optional
+      .populate('attendees', 'name')
+      .exec();
+  } catch (error) {
+    this.logger.error(`Failed to find retreats for servantee ${servanteeId}: ${error.message}`, error.stack);
+    throw new RetreatOperationFailedException('find', error.message);
+  }
+}
+
 
   async update(id: string, updateDto: UpdateRetreatDto): Promise<Retreat> {
     try {
