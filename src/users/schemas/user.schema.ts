@@ -13,6 +13,14 @@ export enum UserRole {
 @Schema({ timestamps: true })
 export class User {
   @ApiProperty({
+    example: 'John Doe',
+    description: 'Name of the user'
+  })
+  @Prop({ 
+    required: [true, 'name is required'],
+  })
+  name: string;
+  @ApiProperty({
     example: 'john@example.com',
     description: 'Email address of the user'
   })
