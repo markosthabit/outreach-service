@@ -1,10 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { Servantee } from 'src/servantees/schemas/servantee.schema';
-import { Note } from 'src/notes/schemas/note.schema';
+import mongoose, { Document, Types } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 
-@Schema({ timestamps: true })
+@Schema({ collection: 'retreats', timestamps: true })
 export class Retreat extends Document {
   @ApiProperty({
     example: 'Summer Retreat 2025',
@@ -38,10 +36,10 @@ export class Retreat extends Document {
     type: [String]
   })
   @Prop({
-    type: [{ type: Types.ObjectId, ref: 'Servantee' }],
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Servantee' }],
     default: [],
   })
-  attendees: Types.ObjectId[];
+  attendees: mongoose.Types.ObjectId[];
 
   @ApiProperty({
     example: ['507f1f77bcf86cd799439011'],
@@ -49,10 +47,10 @@ export class Retreat extends Document {
     type: [String]
   })
   @Prop({
-    type: [{ type: Types.ObjectId, ref: 'Note' }],
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Note' }],
     default: [],
   })
-  notes: Types.ObjectId[];
+  notes: mongoose.Types.ObjectId[];
 }
 
 export const RetreatSchema = SchemaFactory.createForClass(Retreat);

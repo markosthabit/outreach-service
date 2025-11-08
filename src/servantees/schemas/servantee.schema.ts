@@ -1,11 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import mongoose, { Document, Types } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../users/schemas/user.schema'; 
 
 export type ServanteeDocument = Servantee & Document;
 
-@Schema({ timestamps: true })
+@Schema({collection: 'servantees', timestamps: true })
 export class Servantee {
   @ApiProperty()
   @Prop({ required: true, unique: true })
@@ -25,7 +25,7 @@ export class Servantee {
 
   @ApiProperty({ required: false })
   @Prop()
-  work: string;
+  year: string;
 
   @ApiProperty({ required: false })
   @Prop()
@@ -40,8 +40,8 @@ export class Servantee {
   notes: Types.ObjectId[];
 
   @ApiProperty({ type: [Types.ObjectId], required: false })
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Retreat' }] })
-  retreats: Types.ObjectId[];
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Retreat' }], default: [] })
+  retreats: mongoose.Types.ObjectId[];
   
 
   @ApiProperty({ default: true })

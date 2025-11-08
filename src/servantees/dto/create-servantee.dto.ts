@@ -23,10 +23,10 @@ export class CreateServanteeDto {
   @IsString()
   education?: string;
 
-  @ApiProperty({ example: 'Engineer', required: false })
+  @ApiProperty({ example: 'Second', required: false })
   @IsOptional()
   @IsString()
-  work?: string;
+  year?: string;
 
   @ApiProperty({ example: 'St. Mary Church', required: false })
   @IsOptional()

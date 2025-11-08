@@ -10,7 +10,7 @@ export enum UserRole {
   SERVANT = 'Servant',
 }
 
-@Schema({ timestamps: true })
+@Schema({ collection: 'users', timestamps: true })
 export class User {
   @ApiProperty({
     example: 'John Doe',

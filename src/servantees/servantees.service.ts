@@ -11,7 +11,7 @@ export class ServanteesService {
   private readonly logger = new Logger(ServanteesService.name);
 
   constructor(
-    @InjectModel(Servantee.name) private servanteeModel: Model<ServanteeDocument>,
+    @InjectModel('Servantee') private servanteeModel: Model<ServanteeDocument>,
   ) {}
 
   async create(createServanteeDto: CreateServanteeDto, userId: string): Promise<Servantee> {

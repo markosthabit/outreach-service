@@ -24,8 +24,8 @@ export class RetreatsService {
   private readonly logger = new Logger(RetreatsService.name);
 
   constructor(
-    @InjectModel(Retreat.name) private retreatModel: Model<Retreat>,
-    @InjectModel(Servantee.name) private servanteeModel: Model<Servantee>,
+    @InjectModel('Retreat') private retreatModel: Model<Retreat>,
+    @InjectModel('Servantee') private servanteeModel: Model<Servantee>,
   ) {}
 
   async create(createDto: CreateRetreatDto): Promise<Retreat> {

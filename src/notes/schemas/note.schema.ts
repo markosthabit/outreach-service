@@ -4,7 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Servantee } from '../../servantees/schemas/servantee.schema';
 import { Retreat } from '../../retreats/schemas/retreat.schema';
 
-@Schema({ timestamps: true })
+@Schema({collection: 'notes', timestamps: true })
 export class Note extends Document {
   @ApiProperty({
     example: 'This is a note about the servantee.',

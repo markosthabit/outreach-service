@@ -9,9 +9,9 @@ import { Note, NoteSchema } from 'src/notes/schemas/note.schema';
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Retreat.name, schema: RetreatSchema },
-      { name: Servantee.name, schema: ServanteeSchema },
-      { name: Note.name, schema: NoteSchema },
+      { name: 'Retreat', schema: RetreatSchema },
+      { name: 'Servantee', schema: ServanteeSchema },
+      { name: 'Note', schema: NoteSchema },
 
     ]),
   ],

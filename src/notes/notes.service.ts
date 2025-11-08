@@ -20,9 +20,9 @@ export class NotesService {
   private readonly logger = new Logger(NotesService.name);
 
   constructor(
-    @InjectModel(Note.name) private readonly noteModel: Model<Note>,
-    @InjectModel(Servantee.name) private readonly servanteeModel: Model<Servantee>,
-    @InjectModel(Retreat.name) private readonly retreatModel: Model<Retreat>,
+    @InjectModel('Note') private readonly noteModel: Model<Note>,
+    @InjectModel('Servantee') private readonly servanteeModel: Model<Servantee>,
+    @InjectModel('Retreat') private readonly retreatModel: Model<Retreat>,
   ) {}
 
   async create(createNoteDto: CreateNoteDto): Promise<Note> {

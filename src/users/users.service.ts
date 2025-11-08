@@ -1,7 +1,7 @@
 import { Injectable, ConflictException, NotFoundException, InternalServerErrorException, Logger, HttpException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { User, UserDocument } from './schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -13,7 +13,7 @@ export class UsersService {
   private readonly SALT_ROUNDS = 10;
 
   constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel('User') private userModel: Model<UserDocument>,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<UserDocument> {

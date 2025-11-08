@@ -1,14 +1,17 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { InjectModel, MongooseModule } from '@nestjs/mongoose';
 import { Servantee, ServanteeSchema } from './schemas/servantee.schema';
 import { ServanteesService } from './servantees.service';
 import { ServanteesController } from './servantees.controller';
+import { Model } from 'mongoose';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Servantee.name, schema: ServanteeSchema }])
+    MongooseModule.forFeature([{ name: 'Servantee', schema: ServanteeSchema }])
   ],
   controllers: [ServanteesController],
   providers: [ServanteesService],
 })
-export class ServanteesModule {}
+export class ServanteesModule {
+  constructor(@InjectModel('Servantee') private model: Model<Servantee>) { }
+}

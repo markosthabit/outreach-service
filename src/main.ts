@@ -25,16 +25,19 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('outreach')
     .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document, {
+  if (process.env.NODE_ENV !== 'production') {
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document, {
       jsonDocumentUrl: 'api/json',
-  });
+    });
+  }
   app.use(cookieParser());
   app.enableCors({
-    origin: process.env.FRONTEND_URL,
+    origin: ['http://localhost:3003', 'http://localhost:3002'],
     credentials: true,
   });
   await app.listen(process.env.PORT ?? 3002);
+    console.log(`NestJS running on http://localhost:${process.env.PORT}`);
+
 }
 bootstrap();

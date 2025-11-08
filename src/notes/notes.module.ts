@@ -9,9 +9,9 @@ import { Retreat, RetreatSchema } from '../retreats/schemas/retreat.schema';
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Note.name, schema: NoteSchema },
-      { name: Servantee.name, schema: ServanteeSchema },
-      { name: Retreat.name, schema: RetreatSchema },
+      { name: 'Note', schema: NoteSchema },
+      { name: 'Servantee', schema: ServanteeSchema },
+      { name: 'Retreat', schema: RetreatSchema },
     ]),
   ],
   controllers: [NotesController],
