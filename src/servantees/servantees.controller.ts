@@ -71,8 +71,7 @@ async findAll(
   @Query('search') search = '',
 ) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10)); // prevent abuse
-
+const limitNum = parseInt(limit, 10) || 10; // No cap
 
   return this.servanteesService.findAll({
     page: pageNum,
