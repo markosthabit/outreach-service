@@ -11,8 +11,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from './schemas/user.schema';
 @ApiTags('Users')
 @Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN) // 👈 only Admins can create
+
 
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -22,6 +21,8 @@ export class UsersController {
   @ApiResponse({ status: 201, description: 'The user has been successfully created.' })
   @ApiResponse({ status: 400, description: 'Bad request - validation error or invalid password format.' })
   @ApiResponse({ status: 409, description: 'Conflict - Email already exists.' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN) 
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
@@ -48,6 +49,8 @@ export class UsersController {
   @ApiResponse({ status: 400, description: 'Bad request - Invalid ObjectId or validation error.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   @ApiResponse({ status: 409, description: 'Conflict - Email already exists.' })
+      @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN) 
   update(@Param('id', ParseObjectIdPipe) id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(id, updateUserDto);
   }
@@ -57,6 +60,8 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'The user has been successfully deleted.' })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid ObjectId.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
+      @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN) 
   remove(@Param('id', ParseObjectIdPipe) id: string) {
     return this.usersService.remove(id);
   }
